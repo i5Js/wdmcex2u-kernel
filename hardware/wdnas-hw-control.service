@@ -1,0 +1,26 @@
+[Unit]
+Description=WD EX2 Ultra power LED and thermal fan control
+After=local-fs.target
+ConditionPathExists=/dev/ttyS1
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/wdnas-hw-control run
+ExecStopPost=/usr/local/sbin/wdnas-hw-control fan 255
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+RuntimeDirectory=wdnas-hw-control
+RuntimeDirectoryMode=0750
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
