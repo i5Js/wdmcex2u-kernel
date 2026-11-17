@@ -1,4 +1,15 @@
 # build tools for wdmcex2u
+
+## Fork de pruebas y Linux 6.12 LTS
+
+Este fork incorpora un camino de compilación Linux 6.12 LTS con kernel y módulos versionados, y el controlador de LED y ventilación del EX2 Ultra. La guía de pruebas utiliza el USB existente y una selección temporal desde U-Boot.
+
+- [Compilación 6.12 y varios kernels en el mismo USB](docs/LINUX-6.12-LTS.md).
+- [Control de LED y ventilador](hardware/README.md).
+- [Workflow de compilación](https://github.com/i5Js/wdmcex2u-kernel/actions/workflows/compile-kernel.yml).
+
+La guía histórica siguiente conserva el procedimiento del proyecto original. Para el camino 6.12 utiliza la guía enlazada arriba.
+
 ## WD My Cloud EX 2 Ultra based on Marvell ARMADA 385
 (forked and modified from the original Heisath/wdmc2-kernel)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/donate?hosted_button_id=HXWRU82YBV7HC&source=url)
