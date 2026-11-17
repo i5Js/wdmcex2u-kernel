@@ -105,3 +105,18 @@ systemctl --failed --no-pager
 ```
 
 La compilación y la inspección del paquete son comprobaciones distintas de su arranque en el hardware. Registrar ambos resultados antes de promover el kernel a arranque habitual.
+
+## Compilación verificada del 17 de noviembre de 2026
+
+La [ejecución 44170910914 de Actions](https://github.com/i5Js/wdmcex2u-kernel/actions/runs/44170910914) terminó correctamente con GCC 13.3.0. El constructor utilizó la revisión `c74c9bf9eecfee0e943c37f1023192e578a9fae0` del fork y el commit oficial `b869a5313cbfe7102873d3de318ddb68675146d0` de Linux.
+
+La inspección de los artefactos descargados confirmó las sumas SHA-256, las CRC de la imagen U-Boot, arquitectura ARM, carga y entrada `0x00008000`, DTB concatenado para EX2 Ultra con 1 GiB y ambas UART habilitadas. El árbol contiene 272 módulos ARM dentro de su identificación propia. La imagen U-Boot ocupa 4.965.314 bytes.
+
+| Paquete | SHA-256 |
+| --- | --- |
+| `boot-6.12.118-wdex2u.tar.gz` | `c443bcdfcd9ab461af65e5e73e5660562c0b54b21dda5a44fd1c26ff39537c14` |
+| `modules-6.12.118-wdex2u.tar.gz` | `967a133a80747343c389ee2915d9b01fc1fe0380a0e3515ffa651376296aa044` |
+
+También pasaron las trece pruebas del controlador de hardware y comprobaciones del punto de entrada con herramientas simuladas para los paquetes versionados 6.12, los nombres habituales de kernels anteriores, la propagación de errores de `make`, la conservación de paquetes anteriores y el rechazo de referencias de ruta inválidas.
+
+El log conserva avisos de migración de `BASE_SMALL` de la semilla 6.1 y del formato histórico de nombres de particiones NAND en el DTS. La configuración final normalizada superó las comprobaciones de controladores integrados. El primer arranque y las pruebas funcionales de este kernel en el WD quedan pendientes.
