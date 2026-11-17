@@ -154,7 +154,7 @@ read_arguments() {
 
             --ghrunner)
                 GHRUNNER='on'
-                THREADS=2
+                THREADS=$(getconf _NPROCESSORS_ONLN)
                 shift;
             ;;
 

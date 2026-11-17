@@ -1,159 +1,113 @@
 #!/bin/bash
 
 build_kernel()
-{
-    # do preparation steps
-    echo "### Cloning linux kernel $kernel_branch"
+(
+    set -e
+    set -o pipefail
 
-    if [[ $kernel_branch == *linux* ]]; then
-        kernel_dir="${cache_dir}/$kernel_branch";
-        kernel_config="config/$kernel_branch.config";
+    # Keep cache paths below cache_dir, including for explicitly selected tags.
+    [[ $kernel_branch =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ && $kernel_branch != *..* ]] ||
+        exit_with_error "Invalid kernel reference"
+    if [[ $kernel_branch == linux-* ]]; then
+        kernel_dir="${cache_dir}/${kernel_branch}"
+        kernel_config="${current_dir}/config/${kernel_branch}.config"
     else
-        kernel_dir="${cache_dir}/linux-$kernel_branch";
-        kernel_config="config/linux-$kernel_branch.config";
+        kernel_dir="${cache_dir}/linux-${kernel_branch}"
+        kernel_config="${current_dir}/config/linux-${kernel_branch}.config"
     fi
 
-    if [[ $GHRUNNER == "on" ]]; then
-        rm -rf "${output_dir}"
+    mkdir -p "${cache_dir}" "${boot_dir}"
+    if [[ ! -d ${kernel_dir} ]]; then
+        git clone --branch "$kernel_branch" --depth 1 \
+            https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git "${kernel_dir}"
+    elif [[ $CLEAN_KERNEL_SRC == on ]]; then
+        git -C "${kernel_dir}" fetch --depth 1 origin "$kernel_branch"
+        git -C "${kernel_dir}" checkout -f -q FETCH_HEAD
+        git -C "${kernel_dir}" clean -qdf
     fi
 
-    # generate output directory
-    mkdir -p "${output_dir}"
-    mkdir -p "${boot_dir}"
+    source_version=$(grab_version "${kernel_dir}")
+    modern_trial=off
+    if [[ $source_version == 6.12.* ]]; then
+        modern_trial=on
+        kernel_config="${current_dir}/config/linux-6.1.y.config"
+    elif [[ ! -f ${kernel_config} ]]; then
+        kernel_config="${current_dir}/config/linux-default.config"
+    fi
+    cp "${kernel_config}" "${kernel_dir}/.config"
 
-    if [ ! -d ${kernel_dir} ]; then
-        echo "### Kernel dir does not exist, cloning kernel"
-
-        mkdir -p "${kernel_dir}"
-
-        # git clone linux tree
-        git clone --branch "$kernel_branch" --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git "${kernel_dir}"
-    else
-        if [ ${CLEAN_KERNEL_SRC} = 'on' ]; then
-            echo "### Kernel dir does exist. Fetching and cleaning"
-
-            cd ${kernel_dir}
-
-            git fetch --depth 1 origin "$kernel_branch"
-
-            git checkout -f -q FETCH_HEAD
-            git clean -qdf
-
-            cd ${current_dir}
-        else
-            echo "### Kernel dir does exist. --clean not provided"
-            echo "### Continuing with dirty kernel src"
-
-        fi
-
+    dtb_name=armada-385-wdmc-Ex2-Ultra
+    dts_subdir=
+    if [[ -d ${kernel_dir}/arch/arm/boot/dts/marvell ]]; then
+        dts_subdir=marvell/
+    fi
+    cp "${current_dir}/dts/${dtb_name}.dts" "${kernel_dir}/arch/arm/boot/dts/${dts_subdir}"
+    dtb_target="${dts_subdir}${dtb_name}.dtb"
+    dtb_makefile="${kernel_dir}/arch/arm/boot/dts/${dts_subdir}Makefile"
+    if ! grep -Fq "${dtb_name}.dtb" "$dtb_makefile"; then
+        printf '\ndtb-$(CONFIG_MACH_ARMADA_38X) += %s.dtb\n' "$dtb_name" >> "$dtb_makefile"
     fi
 
-    kernel_version=$(grab_version "${kernel_dir}");
-
-    if [[ $kernel_version == 0 ]]; then
-        rm -rf "${kernel_dir}"
-        exit_with_error "### Error cloning kernel"
-    fi
-
-    # copy config and dts
-    echo "### Moving kernel config in place"
-
-    if [ ! -f ${kernel_config} ]; then
-        cp config/linux-default.config ${kernel_config}
-    fi
-
-    cp "${kernel_config}" "${kernel_dir}"/.config
-    cp dts/*.dts "${kernel_dir}"/arch/arm/boot/dts/
-
-
-    # cleanup old modules for this kernel, this helps when rebuilding kernel with less modules
-    if [ -d "${output_dir}"/lib/modules/"${kernel_version}" ]; then
-    	rm -r "${output_dir}"/lib/modules/"$kernel_version"
-    elif [ -d "${output_dir}"/lib/modules/"${kernel_version}"+ ]; then
-    	rm -r "${output_dir}"/lib/modules/"$kernel_version"+
-    fi
-
-
-    # cd into linux source
     cd "${kernel_dir}"
-
-    echo "### Starting make"
-
-    if [ ${ALLOW_KERNEL_CONFIG_CHANGES} = 'on' ]; then
-        $makehelp menuconfig
+    if [[ $modern_trial == on ]]; then
+        scripts/kconfig/merge_config.sh -m .config "${current_dir}/config/linux-6.12.y.fragment"
     fi
-    echo "### Making 'olddefconfig' if there's any changes to upstream config"
-    $makehelp olddefconfig
-    $makehelp -j${THREADS} zImage
-    $makehelp -j${THREADS} armada-385-wdmc-Ex2-Ultra.dtb
-    cat arch/arm/boot/zImage arch/arm/boot/dts/armada-385-wdmc-Ex2-Ultra.dtb > zImage_and_dtb
-    mkimage -A arm -O linux -T kernel -C none -a 0x00008000 -e 0x00008000 -n 'WDMC-EX2-Ultra' -d zImage_and_dtb "${boot_dir}"/uImage-${kernel_version}
-    rm zImage_and_dtb
-
-    $makehelp -j${THREADS} modules
-    $makehelp -j${THREADS} INSTALL_MOD_PATH="${output_dir}" modules_install
-
-    cd "${current_dir}"
-
-    echo "### Copying new kernel config to output"
-    cp "${kernel_dir}"/.config "${boot_dir}"/linux-${kernel_version}.config
-
-    echo "### Adding default ramdisk to output"
-    cp prebuilt/uRamdisk "${boot_dir}"
-
-    # set permissions for later runnable files
-    chmod =rwxrxrx "${boot_dir}"/uRamdisk
-    chmod =rwxrxrx "${boot_dir}"/uImage-${kernel_version}
-
-    cp "${boot_dir}"/uImage-${kernel_version} "${boot_dir}"/uImage
-
-    echo "### Cleanup and tar results"
-    rm "${output_dir}"/lib/modules/*/source
-    rm "${output_dir}"/lib/modules/*/build
-
-    # tar and compress modules for easier transport
-    cd "${output_dir}"/lib/modules/
-    if [ -d "${kernel_version}" ]; then
-    	tar -czf "${output_dir}"/modules-${kernel_version}.tar.gz "${kernel_version}"
-    elif [ -d "${kernel_version}"+ ]; then
-    	tar -czf "${output_dir}"/modules-${kernel_version}+.tar.gz "${kernel_version}"+
-    else
-    	echo "### Failed to tar up modules folder! It might be missing from the output."
+    [[ $ALLOW_KERNEL_CONFIG_CHANGES != on ]] || "${makehelp[@]}" menuconfig
+    "${makehelp[@]}" olddefconfig
+    if [[ $modern_trial == on ]]; then
+        bash "${current_dir}/tools/check-boot-config.sh" .config
     fi
+    kernel_version=$("${makehelp[@]}" -s kernelrelease)
+    modules_dir="${output_dir}/lib/modules/${kernel_version}"
+    [[ ! -d $modules_dir ]] || rm -rf -- "$modules_dir"
 
+    "${makehelp[@]}" -j"${THREADS}" zImage "$dtb_target" modules
+    cat arch/arm/boot/zImage "arch/arm/boot/dts/${dtb_target}" > zImage_and_dtb
+    mkimage -A arm -O linux -T kernel -C none -a 0x00008000 -e 0x00008000 \
+        -n "WD EX2 Ultra ${kernel_version}" -d zImage_and_dtb "${boot_dir}/uImage-${kernel_version}"
+    "${makehelp[@]}" -j"${THREADS}" INSTALL_MOD_PATH="${output_dir}" modules_install
+    rm -f -- "${modules_dir}/source" "${modules_dir}/build"
+
+    cp .config "${boot_dir}/linux-${kernel_version}.config"
+    cp System.map "${boot_dir}/System.map-${kernel_version}"
+    cp "arch/arm/boot/dts/${dtb_target}" "${boot_dir}/${dtb_name}-${kernel_version}.dtb"
+    # Legacy rootfs creation still consumes this file. The 6.12 trial archive
+    # packages the versioned kernel, config, map and DTB.
+    cp "${current_dir}/prebuilt/uRamdisk" "${boot_dir}/uRamdisk"
+    chmod 755 "${boot_dir}/uImage-${kernel_version}" "${boot_dir}/uRamdisk"
+
+    source_commit=$(git rev-parse HEAD)
+    builder_commit=$(git -C "${current_dir}" rev-parse HEAD)
+    compiler_version=$("${CROSS_COMPILE:-arm-linux-gnueabihf-}gcc" -dumpfullversion)
+    python3 - "$output_dir" "$kernel_branch" "$source_commit" "$builder_commit" "$kernel_version" "$compiler_version" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+output, ref, source, builder, release, compiler = sys.argv[1:]
+Path(output, f"build-{release}.json").write_text(json.dumps({
+    "kernel_ref": ref, "kernel_commit": source, "builder_commit": builder,
+    "kernel_release": release, "compiler_version": compiler,
+}, indent=2) + "\n")
+PY
+    printf '%s\n' "$kernel_version" > "${output_dir}/kernel-release"
     cd "${output_dir}"
-    tar -czf "${output_dir}"/boot-${kernel_version}.tar.gz boot/uRamdisk boot/uImage-${kernel_version} boot/uImage boot/linux-${kernel_version}.config
-
-    rm "${boot_dir}"/uImage
-
-    cd "${current_dir}"
-
-    # abort point for github runner to keep it from messing with permissions
-    if [[ $GHRUNNER == "on" ]]; then
-        exit 0
+    tar -czf "modules-${kernel_version}.tar.gz" -C lib/modules "$kernel_version"
+    if [[ $modern_trial == on ]]; then
+        tar -czf "boot-${kernel_version}.tar.gz" \
+            "boot/uImage-${kernel_version}" "boot/linux-${kernel_version}.config" \
+            "boot/System.map-${kernel_version}" "boot/${dtb_name}-${kernel_version}.dtb"
+    else
+        cp "boot/uImage-${kernel_version}" boot/uImage
+        tar -czf "boot-${kernel_version}.tar.gz" boot/uRamdisk boot/uImage \
+            "boot/uImage-${kernel_version}" "boot/linux-${kernel_version}.config"
+        rm boot/uImage
     fi
-
-    # fix permissions on folders for usability
-    chown "root:sudo" "${cache_dir}"
-    chown "root:sudo" "${cache_dir}"/*
-
-    chown "root:sudo" "${output_dir}"
-    chown -R "root:sudo" "${boot_dir}"
-    chown "root:sudo" "${output_dir}"/lib
-
-    if [ -f "${output_dir}"/modules-${kernel_version}.tar.gz ]; then
-    	chown "${current_user}:sudo" "${output_dir}"/modules-${kernel_version}.tar.gz
-	fi
-    if [ -f "${output_dir}"/modules-${kernel_version}+.tar.gz ]; then
-   	    chown "${current_user}:sudo" "${output_dir}"/modules-${kernel_version}+.tar.gz
+    sha256sum "boot-${kernel_version}.tar.gz" "modules-${kernel_version}.tar.gz" \
+        "build-${kernel_version}.json" > "SHA256SUMS-${kernel_version}"
+    if [[ $GHRUNNER != on ]]; then
+        chown "${current_user}:sudo" "boot-${kernel_version}.tar.gz" \
+            "modules-${kernel_version}.tar.gz" "build-${kernel_version}.json" \
+            "SHA256SUMS-${kernel_version}" kernel-release
     fi
-
-    chown "${current_user}:sudo" "${output_dir}"/boot-${kernel_version}.tar.gz
-
-    chmod "g+rw" "${cache_dir}"
-    chmod "g+rw" "${cache_dir}"/*
-    chmod "g+rw" "${output_dir}"
-    chmod -R "g+rw" "${boot_dir}"
-    chmod "g+rw" "${output_dir}"/lib
-
-}
+)

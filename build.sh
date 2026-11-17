@@ -32,7 +32,7 @@ current_user="$(stat --format %U "${current_dir}"/.git)"
 GHRUNNER='off'
 THREADS=8
 EXTRA_PKGS='bash-completion htop btrfs-progs mdadm mtd-utils'
-makehelp='make CROSS_COMPILE=/usr/bin/arm-none-eabi- ARCH=arm'                                         #FOR KERNEL VERSION >= 5.6 (via apt)
+makehelp=(make ARCH=arm "CROSS_COMPILE=${CROSS_COMPILE:-arm-linux-gnueabihf-}" LOCALVERSION=)
 
 # start by reading command line arguments
 read_arguments "$@"
@@ -44,16 +44,18 @@ fi
 
 if [[ $GHRUNNER != 'on' ]]; then
     echo "### Will try to use apt to install prerequisites."
-    apt-get install build-essential bc libncurses5 dialog u-boot-tools git libncurses-dev lib32z1 lib32ncurses5-dev libmpc-dev libmpfr-dev libgmp3-dev flex bison debootstrap debian-archive-keyring qemu-user-static gcc-arm-none-eabi
+    apt-get install build-essential bc dialog u-boot-tools git libncurses-dev libssl-dev libelf-dev flex bison debootstrap debian-archive-keyring qemu-user-static gcc-arm-linux-gnueabihf python3
 fi
 
-# calculate dialog sizes
-exec 3>&1
-dsize=$(dialog --print-maxsize 2>&1 1>&3)
-exec 3>&-
-dsize=( $(echo "$dsize" | grep -o -E '[0-9]+') )
-DIALOG_HEIGHT=$((${dsize[0]} - 12))
-DIALOG_WIDTH=$((${dsize[1]} - 8))
+# Headless kernel builds do not need terminal discovery.
+DIALOG_HEIGHT=20
+DIALOG_WIDTH=76
+if [[ -t 0 && -t 1 ]]; then
+    dsize=$(dialog --print-maxsize 2>&1)
+    dsize=( $(echo "$dsize" | grep -o -E '[0-9]+') )
+    DIALOG_HEIGHT=$((${dsize[0]} - 12))
+    DIALOG_WIDTH=$((${dsize[1]} - 8))
+fi
 
 
 # if command line has selected neither kernel nor rootfs we can assume, no selection was done and ask user
@@ -117,6 +119,7 @@ if [[ $BUILD_KERNEL == "on" ]] && [ -z "$kernel_branch" ]; then
         "6.0" "Linux kernel 6.0" \
         "6.1" "Linux kernel 6.1" \
         "6.2" "Linux kernel 6.2" \
+        "6.12" "Linux kernel 6.12 LTS" \
         
     kernel_branch="linux-$selection.y"
 fi
@@ -177,5 +180,13 @@ if [[ $BUILD_ROOTFS == "on" ]]; then
 fi
 BACKTITLE+=" | "${release}
 
-[[ $BUILD_KERNEL == "on" ]] && build_kernel
-[[ $BUILD_ROOTFS == "on" ]] && build_root_fs
+if [[ $BUILD_KERNEL == "on" ]]; then
+    build_kernel
+    kernel_status=$?
+    [[ $kernel_status -eq 0 ]] || exit "$kernel_status"
+    kernel_version=$(cat "${output_dir}/kernel-release")
+    [[ $GHRUNNER == "on" ]] && exit 0
+fi
+if [[ $BUILD_ROOTFS == "on" ]]; then
+    build_root_fs
+fi

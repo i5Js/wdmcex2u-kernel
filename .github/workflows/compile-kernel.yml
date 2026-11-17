@@ -1,48 +1,61 @@
-# This is a basic workflow to help you get started with Actions
+name: Build EX2 Ultra kernel
 
-name: compile kernel using ghrunner settings
-
-# Controls when the action will run. 
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
-  # push:
-  #  branches: [ master ]
-  # spull_request:
-  #  branches: [ master ]
-  
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch: 
+  push:
+    branches: [codex/linux-6.12-lts]
+    paths:
+      - build.sh
+      - inc/kernel.sh
+      - inc/helpers.sh
+      - config/**
+      - dts/**
+      - tools/**
+      - .github/workflows/compile-kernel.yml
+  workflow_dispatch:
     inputs:
       kernelversion:
-        description: 'Kernel version'     
+        description: Official stable branch or tag
         required: true
-        default: 'linux-6.1.y'
+        default: v6.12.118
+        type: string
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions:
+  contents: read
+
 jobs:
-  # This workflow contains a single job called "build"
   build-kernel:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-  
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-        with: 
-          clean: 'false'
-
-      - name: Install needed tools
+      - uses: actions/checkout@v4
+      - name: Install cross compiler and build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-arm-none-eabi build-essential bc libncurses5 dialog u-boot-tools git libncurses-dev lib32z1 lib32ncurses5-dev libmpc-dev libmpfr-dev libgmp3-dev flex bison debootstrap debian-archive-keyring qemu-user-static
-          
-      # Runs a single command using the runners shell
-      - name: run build script with ghrunner config
-        run: ./build.sh --ghrunner --kernel --clean --kernelbranch ${{ github.event.inputs.kernelversion }}
-  
-      # Upload build results
-      - uses: actions/upload-artifact@v2
+          sudo apt-get install -y gcc-arm-linux-gnueabihf build-essential bc bison flex libssl-dev libelf-dev libncurses-dev u-boot-tools python3
+      - name: Check scripts and hardware controller
+        run: |
+          bash -n build.sh inc/kernel.sh inc/helpers.sh tools/check-boot-config.sh
+          python3 -B -m unittest discover -s hardware -v
+      - name: Build kernel, board DTB and modules
+        env:
+          KERNEL_REF: ${{ inputs.kernelversion || 'v6.12.118' }}
+        run: ./build.sh --ghrunner --kernel --clean --kernelbranch "$KERNEL_REF"
+      - name: Verify trial archive and checksums
+        run: |
+          release=$(cat output/kernel-release)
+          cd output
+          sha256sum -c "SHA256SUMS-$release"
+          tar -tzf "boot-$release.tar.gz"
+          if [[ $release == 6.12.* ]]; then
+            ! tar -tzf "boot-$release.tar.gz" | grep -Ex 'boot/(uImage|uRamdisk)'
+          fi
+      - uses: actions/upload-artifact@v4
         with:
-          name: build-results
-          path: output/*.tar.gz     
+          name: wd-ex2-ultra-kernel
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            output/*.tar.gz
+            output/build-*.json
+            output/SHA256SUMS-*
+            output/kernel-release

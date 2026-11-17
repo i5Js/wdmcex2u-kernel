@@ -25,7 +25,7 @@
 	compatible = "wd,mcex2u", "marvell,armada385", "marvell,armada380";
 
 	chosen {
-		stdout-path = "console=ttyS0,115200 root=LABEL=rootfs earlyprintk";
+		stdout-path = "serial0:115200n8";
 	};
 
 	memory {
