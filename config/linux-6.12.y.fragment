@@ -1,6 +1,6 @@
 # Seeded from the existing 6.1 board configuration, then migrated by olddefconfig.
 # A distinct release gives trial kernels their own /lib/modules directory.
-CONFIG_LOCALVERSION="-wdex2u-wol2"
+CONFIG_LOCALVERSION="-wdex2u-wol1"
 # CONFIG_LOCALVERSION_AUTO is not set
 # CONFIG_WERROR is not set
 CONFIG_ARM_APPENDED_DTB=y

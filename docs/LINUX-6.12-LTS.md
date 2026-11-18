@@ -1,6 +1,6 @@
 # Linux 6.12 LTS y pruebas con varios kernels
 
-Los candidatos de apagado físico y Wake-on-LAN del 18 de noviembre se describen en [Apagado y LED de las bahías](POWEROFF-Y-LEDS-6.12.md). Las referencias `6.12.118-wdex2u` de este documento identifican la primera compilación del 17 de noviembre.
+La corrección del apagado físico y el candidato `6.12.118-wdex2u-wol1` se describen en [Apagado y LED de las bahías](POWEROFF-Y-LEDS-6.12.md). Las referencias `6.12.118-wdex2u` de este documento identifican la primera compilación del 17 de noviembre.
 
 ## Compilación
 
