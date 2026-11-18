@@ -17,11 +17,12 @@ build_kernel()
     fi
 
     mkdir -p "${cache_dir}" "${boot_dir}"
+    kernel_source_url=${KERNEL_SOURCE_URL:-https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git}
     if [[ ! -d ${kernel_dir} ]]; then
         git clone --branch "$kernel_branch" --depth 1 \
-            https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git "${kernel_dir}"
+            "$kernel_source_url" "${kernel_dir}"
     elif [[ $CLEAN_KERNEL_SRC == on ]]; then
-        git -C "${kernel_dir}" fetch --depth 1 origin "$kernel_branch"
+        git -C "${kernel_dir}" fetch --depth 1 "$kernel_source_url" "$kernel_branch"
         git -C "${kernel_dir}" checkout -f -q FETCH_HEAD
         git -C "${kernel_dir}" clean -qdf
     fi

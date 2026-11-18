@@ -40,6 +40,7 @@ jobs:
       - name: Build kernel, board DTB and modules
         env:
           KERNEL_REF: ${{ inputs.kernelversion || 'v6.12.118' }}
+          KERNEL_SOURCE_URL: https://github.com/gregkh/linux.git
         run: ./build.sh --ghrunner --kernel --clean --kernelbranch "$KERNEL_REF"
       - name: Verify trial archive and checksums
         run: |

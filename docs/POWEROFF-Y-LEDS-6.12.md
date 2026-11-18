@@ -18,6 +18,8 @@ Los dos LED azules usan GPIO53 y GPIO54 y quedan encendidos por defecto al inici
 
 ## Compilación y prueba
 
+Actions obtiene el tag del espejo del mantenedor estable `gregkh/linux`. El constructor admite `KERNEL_SOURCE_URL` y conserva kernel.org como valor predeterminado para las invocaciones locales. El manifiesto registra el commit fuente y el commit del constructor.
+
 ```sh
 gh workflow run compile-kernel.yml --repo i5Js/wdmcex2u-kernel --ref codex/wdnas-wol-poweroff-6.12 -f kernelversion=v6.12.118
 ```
