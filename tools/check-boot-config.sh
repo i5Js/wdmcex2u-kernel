@@ -10,6 +10,8 @@ required=(
     EXT4_FS EXT4_USE_FOR_EXT2 AHCI_MVEBU BLK_DEV_MD MD_RAID1
     MVNETA MVMDIO MARVELL_PHY VLAN_8021Q SERIAL_8250 SERIAL_8250_CONSOLE
     SERIAL_OF_PLATFORM ARMADA_THERMAL REGULATOR_FIXED_VOLTAGE
+    POWER_RESET POWER_RESET_QNAP
+    NEW_LEDS LEDS_CLASS LEDS_GPIO
     MTD_CMDLINE_PARTS MTD_RAW_NAND MTD_NAND_MARVELL MTD_UBI UBIFS_FS
 )
 for symbol in "${required[@]}"; do
@@ -18,5 +20,5 @@ for symbol in "${required[@]}"; do
         exit 1
     }
 done
-grep -qx 'CONFIG_LOCALVERSION="-wdex2u"' "$config"
-printf '%s\n' 'USB boot, NAND MAC retrieval, SATA/RAID, UART, thermal and VLAN configuration verified'
+grep -qx 'CONFIG_LOCALVERSION="-wdex2u-wol1"' "$config"
+printf '%s\n' 'USB boot, NAND MAC retrieval, SATA/RAID, UART poweroff, thermal and VLAN configuration verified'

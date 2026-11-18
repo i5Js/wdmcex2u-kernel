@@ -10,6 +10,7 @@ on:
       - config/**
       - dts/**
       - tools/**
+      - patches/**
       - .github/workflows/compile-kernel.yml
   workflow_dispatch:
     inputs:

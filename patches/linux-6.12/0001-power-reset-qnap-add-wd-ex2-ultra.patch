@@ -1,0 +1,69 @@
+diff --git a/drivers/power/reset/qnap-poweroff.c b/drivers/power/reset/qnap-poweroff.c
+--- a/drivers/power/reset/qnap-poweroff.c
++++ b/drivers/power/reset/qnap-poweroff.c
+@@ -17,25 +17,40 @@
+ #include <linux/of.h>
+ #include <linux/io.h>
+ #include <linux/clk.h>
++#include <linux/delay.h>
+ 
+ #define UART1_REG(x)	(base + ((UART_##x) << 2))
+ 
+ struct power_off_cfg {
+ 	u32 baud;
+-	char cmd;
++	u8 cmd[7];
++	unsigned int cmd_len;
++	unsigned int byte_delay_ms;
+ };
+ 
+ static const struct power_off_cfg qnap_power_off_cfg = {
+ 	.baud = 19200,
+-	.cmd = 'A',
++	.cmd = { 'A' },
++	.cmd_len = 1,
+ };
+ 
+ static const struct power_off_cfg synology_power_off_cfg = {
+ 	.baud = 9600,
+-	.cmd = '1',
++	.cmd = { '1' },
++	.cmd_len = 1,
++};
++
++static const struct power_off_cfg wd_ex2_ultra_power_off_cfg = {
++	.baud = 19200,
++	.cmd = { 0xfa, 0x03, 0x03, 0x01, 0x00, 0x00, 0xfb },
++	.cmd_len = 7,
++	.byte_delay_ms = 5,
+ };
+ 
+ static const struct of_device_id qnap_power_off_of_match_table[] = {
++	{ .compatible = "wd,ex2-ultra-poweroff",
++	  .data = &wd_ex2_ultra_power_off_cfg,
++	},
+ 	{ .compatible = "qnap,power-off",
+ 	  .data = &qnap_power_off_cfg,
+ 	},
+@@ -53,6 +68,7 @@
+ static void qnap_power_off(void)
+ {
+ 	const unsigned divisor = ((tclk + (8 * cfg->baud)) / (16 * cfg->baud));
++	unsigned int i;
+ 
+ 	pr_err("%s: triggering power-off...\n", __func__);
+ 
+@@ -65,8 +81,11 @@
+ 	writel(0x00, UART1_REG(FCR));
+ 	writel(0x00, UART1_REG(MCR));
+ 
+-	/* send the power-off command to PIC */
+-	writel(cfg->cmd, UART1_REG(TX));
++	/* Send the power-off command to the controller. */
++	for (i = 0; i < cfg->cmd_len; i++) {
++		writel(cfg->cmd[i], UART1_REG(TX));
++		mdelay(cfg->byte_delay_ms);
++	}
+ }
+ 
+ static int qnap_power_off_probe(struct platform_device *pdev)

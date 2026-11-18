@@ -31,6 +31,10 @@ build_kernel()
     if [[ $source_version == 6.12.* ]]; then
         modern_trial=on
         kernel_config="${current_dir}/config/linux-6.1.y.config"
+        poweroff_patch="${current_dir}/patches/linux-6.12/0001-power-reset-qnap-add-wd-ex2-ultra.patch"
+        if ! git -C "${kernel_dir}" apply --reverse --check "$poweroff_patch" 2>/dev/null; then
+            git -C "${kernel_dir}" apply "$poweroff_patch"
+        fi
     elif [[ ! -f ${kernel_config} ]]; then
         kernel_config="${current_dir}/config/linux-default.config"
     fi

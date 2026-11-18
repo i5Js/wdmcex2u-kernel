@@ -1,5 +1,7 @@
 # Linux 6.12 LTS y pruebas con varios kernels
 
+La corrección del apagado físico y el candidato `6.12.118-wdex2u-wol1` se describen en [Apagado y LED de las bahías](POWEROFF-Y-LEDS-6.12.md). Las referencias `6.12.118-wdex2u` de este documento identifican la primera compilación del 17 de noviembre.
+
 ## Compilación
 
 La referencia inicial es `v6.12.118`, publicada por kernel.org el 17 de noviembre de 2026. El objetivo genera la identificación `6.12.118-wdex2u`, con módulos en `/lib/modules/6.12.118-wdex2u/`. La rama estable puede seleccionarse también mediante `linux-6.12.y`. El tag fija la versión para poder repetir la prueba. [Fuentes y versiones oficiales](https://www.kernel.org/)

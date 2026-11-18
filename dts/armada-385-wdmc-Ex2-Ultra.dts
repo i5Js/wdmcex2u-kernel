@@ -66,11 +66,9 @@
 			};
 
 			poweroff@12100 {
-				compatible = "uart-poweroff";
+				compatible = "wd,ex2-ultra-poweroff";
 				reg = <0x12100 0x100>;
 				clocks = <&coreclk 0>;
-				baud = <19200>;
-				cmd = [fa 03 03 01 00 00 fb];
 				status = "okay";
 			};
 
@@ -271,12 +269,12 @@
 		sata1-blue-led {
 			label = "wdmcex2u:blue:hdd1";
 			gpios = <&gpio1 21 GPIO_ACTIVE_HIGH>;
-			default-state = "keep";
+			default-state = "on";
 		};
 		sata2-blue-led {
 			label = "wdmcex2u:blue:hdd2";
 			gpios = <&gpio1 22 GPIO_ACTIVE_HIGH>;
-			default-state = "keep";
+			default-state = "on";
 		};
 	};
 
