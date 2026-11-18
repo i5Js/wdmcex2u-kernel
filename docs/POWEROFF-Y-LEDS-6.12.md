@@ -10,7 +10,13 @@ La compilación Actions `44342375149` terminó correctamente con el constructor 
 
 El primer reinicio arrancó el candidato por SSH. El RAID1 quedó `[UU]`, los servicios activos, ambas VLAN operativas y el regulador térmico reconoció los discos aunque cambiara su orden de enumeración. El controlador `qnap_power_off` quedó vinculado al nodo de apagado.
 
-El propietario confirmó la parada del ventilador y de los pilotos frontales después del apagado desde OMV. La luz Ethernet seguía activa. El primer ensayo de despertar, mediante Ethernet y UDP desde el router, terminó sin arranque. WOL permanece en diagnóstico. Antes de repetir se debe contrastar la MAC efectiva, la programación del detector del PHY y el estado del puerto de acceso.
+El propietario confirmó la parada del ventilador y de los pilotos frontales después del apagado desde OMV. La luz Ethernet seguía activa. Los primeros ensayos de despertar fallaron. La entrega por el último switch se comprobó mediante una tanda de 19 paquetes y el incremento exacto de 19 broadcasts por el puerto del NAS, con cero errores.
+
+El PHY conservaba `Wake-on: g` pero tenía deshabilitada la interrupción WOL. Se comprobó que repetir `wol g`, incluso mediante ioctl, omite la escritura cuando las opciones coinciden. Tras desactivar y activar realmente `WAKE_MAGIC`, la máscara pasó de cero a `0x0080`. El siguiente paquete desde el router produjo un nuevo arranque con este kernel. El servicio de rearme para OMV está documentado en [hardware](../hardware/README.md#rearme-de-wake-on-lan-en-omv).
+
+Se completaron dos ciclos de apagado y despertar. El segundo utilizó el servicio persistente y el propietario confirmó el encendido. En ambos, SSH respondió aproximadamente 61 segundos después del paquete. En el arranque final se verificó la ejecución automática del helper, el registro de interrupciones `0x0080`, RAID sano, ambas VLAN y control térmico activo.
+
+Se inició una compilación experimental `wol2` con otros parámetros MCU del mantenedor. Al confirmar el despertar con `wol1`, se canceló esa compilación y se revirtió el cambio experimental mediante un nuevo commit.
 
 Linux expone ambos LED azules con brillo 1, pero el propietario los observa apagados. La correspondencia física queda pendiente y el propietario prioriza completar WOL.
 

@@ -1,0 +1,16 @@
+[Unit]
+Description=Rearm WD EX2 Ultra Wake-on-LAN PHY
+Wants=network-online.target
+After=network-online.target systemd-networkd.service
+ConditionPathExists=/sys/class/net/eth0/address
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/wdnas-wol-arm
+ExecStop=/usr/local/sbin/wdnas-wol-arm
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

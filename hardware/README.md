@@ -29,6 +29,27 @@ python3 -B -m unittest discover -s hardware -v
 
 Las pruebas cubren umbrales, histéresis, discos dormidos, lecturas inválidas, confirmación del protocolo, fallo de sensores y ventilador detenido. La prueba de discos dormidos emplea una respuesta simulada de SMART.
 
+## Rearme de Wake-on-LAN en OMV
+
+`wdnas_wol_arm.py` consulta la opción `wol` de `eth0` en la base de configuración de OMV. Cuando está habilitada, programa de nuevo el PHY mediante la API ethtool del kernel. Conserva las demás opciones de despertar y comprueba la transición de `WAKE_MAGIC` de desactivado a activado.
+
+Esta transición es necesaria porque las API ioctl y netlink omiten la escritura cuando las opciones solicitadas coinciden con las actuales. En el EX2 Ultra examinado, `Wake-on: g` coexistía con la máscara de interrupción del PHY a cero. La transición activó el bit WOL de la máscara, con valor `0x0080`, y el siguiente apagado y despertar desde el router completó un nuevo arranque. [API ioctl de Linux 6.12.118](https://github.com/gregkh/linux/blob/v6.12.118/net/ethtool/ioctl.c), [controlador Marvell](https://github.com/gregkh/linux/blob/v6.12.118/drivers/net/phy/marvell.c).
+
+El servicio ejecuta el rearme después de configurar la red y antes de detenerla durante el apagado. Cada ejecución vuelve a consultar la opción de OMV. Las pruebas simulan la optimización de ethtool, la conservación de otras opciones y la recuperación ante un fallo al activar.
+
+Preparar copias y un rollback con sumas antes de instalar.
+
+```sh
+install -m 755 hardware/wdnas_wol_arm.py /usr/local/sbin/wdnas-wol-arm
+install -m 644 hardware/wdnas-wol-arm.service /etc/systemd/system/wdnas-wol-arm.service
+systemd-analyze verify /etc/systemd/system/wdnas-wol-arm.service
+systemctl daemon-reload
+systemctl enable --now wdnas-wol-arm.service
+systemctl status wdnas-wol-arm.service --no-pager
+```
+
+La reversión comprueba primero las sumas instaladas, detiene y deshabilita la unidad y retira exclusivamente esos dos archivos. Después recarga systemd. La opción WOL nativa de OMV tiene su propia recuperación.
+
 ## Instalación
 
 Conservar un registro del estado previo, comprobar la ausencia de archivos anteriores y preparar el rollback antes de activar. Copiar estos dos archivos como root.
