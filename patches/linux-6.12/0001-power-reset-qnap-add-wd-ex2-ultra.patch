@@ -33,7 +33,7 @@ diff --git a/drivers/power/reset/qnap-poweroff.c b/drivers/power/reset/qnap-powe
 +
 +static const struct power_off_cfg wd_ex2_ultra_power_off_cfg = {
 +	.baud = 19200,
-+	.cmd = { 0xfa, 0x03, 0x03, 0x01, 0x00, 0x00, 0xfb },
++	.cmd = { 0xfa, 0x03, 0x03, 0x01, 0x01, 0x01, 0xfb },
 +	.cmd_len = 7,
 +	.byte_delay_ms = 5,
  };

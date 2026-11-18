@@ -4,6 +4,10 @@
 
 El objetivo de compilación produce `6.12.118-wdex2u-wol1`, con módulos propios bajo `/lib/modules/6.12.118-wdex2u-wol1/`. Parte del mismo tag `v6.12.118` de la primera compilación y añade el soporte de apagado físico de la placa.
 
+## Variante de la secuencia MCU
+
+El segundo candidato se identifica como `6.12.118-wdex2u-wol2` y envía `fa 03 03 01 01 01 fb`. Esta trama procede del perfil de apagado publicado por el mantenedor del EX2 Ultra para Linux 4.19.57. Los parámetros finales de esta orden requieren evaluación en la MCU. El cambio constituye una prueba y su efecto sobre Wake-on-LAN queda pendiente de verificar. [Secuencia del mantenedor](https://github.com/c-MM/mcm-daemon/blob/master/kernel/4.19.57/poweroff-restart.diff).
+
 ## Primera prueba física
 
 La compilación Actions `44342375149` terminó correctamente con el constructor `129807421624403479dc1014be5bf4f25e92e67c` y el commit estable `b869a5313cbfe7102873d3de318ddb68675146d0`. Se comprobaron las CRC de U-Boot, el DTB concatenado, el controlador integrado y los 272 módulos. El kernel ocupa 4960910 bytes, con SHA-256 `64530b234ee7d3cc7c5fe353adaadfc2df1fd60bce5ffa8a3d613f4a5dd0323e`.
@@ -18,7 +22,7 @@ La revisión del kernel 6.0.13 instalado confirmó `CONFIG_POWER_RESET` desactiv
 
 ## Controlador de apagado
 
-La receta aplica `patches/linux-6.12/0001-power-reset-qnap-add-wd-ex2-ultra.patch` sobre el controlador existente `qnap-poweroff.c`. Se incorpora un perfil para el EX2 Ultra, a 19200 baudios, que envía la trama Weltrend `fa 03 03 01 00 00 fb` con cinco milisegundos entre bytes. Los perfiles QNAP y Synology utilizan sus órdenes de un byte. [Controlador base Linux 6.12.118](https://github.com/gregkh/linux/blob/v6.12.118/drivers/power/reset/qnap-poweroff.c), [protocolo Weltrend](https://github.com/c-MM/mcm-daemon/blob/master/mcm.h).
+La receta aplica `patches/linux-6.12/0001-power-reset-qnap-add-wd-ex2-ultra.patch` sobre el controlador existente `qnap-poweroff.c`. Se incorpora un perfil para el EX2 Ultra, a 19200 baudios, que envía una trama Weltrend de siete bytes con cinco milisegundos entre bytes. La primera prueba usó `fa 03 03 01 00 00 fb` y la variante `wol2` utiliza la secuencia del mantenedor indicada arriba. Los perfiles QNAP y Synology utilizan sus órdenes de un byte. [Controlador base Linux 6.12.118](https://github.com/gregkh/linux/blob/v6.12.118/drivers/power/reset/qnap-poweroff.c), [protocolo Weltrend](https://github.com/c-MM/mcm-daemon/blob/master/mcm.h).
 
 El Device Tree enlaza el nodo de apagado de UART1 con `wd,ex2-ultra-poweroff`. La configuración y las comprobaciones de compilación exigen `POWER_RESET=y` y `POWER_RESET_QNAP=y`. El controlador toma la UART en el último paso de apagado, después de detener los servicios y sincronizar los sistemas de archivos.
 

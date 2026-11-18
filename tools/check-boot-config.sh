@@ -20,5 +20,5 @@ for symbol in "${required[@]}"; do
         exit 1
     }
 done
-grep -qx 'CONFIG_LOCALVERSION="-wdex2u-wol1"' "$config"
+grep -qx 'CONFIG_LOCALVERSION="-wdex2u-wol2"' "$config"
 printf '%s\n' 'USB boot, NAND MAC retrieval, SATA/RAID, UART poweroff, thermal and VLAN configuration verified'
